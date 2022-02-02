@@ -1,5 +1,9 @@
 locals  {
+  pull_secret = file(var.pull_secret)
+  new_pull_secret = {"auths":merge(jsondecode(local.pull_secret).auths, local.quay_auth)}
   password = var.password != "" ? var.password : random_string.generated_password.result
+  encoded_password = base64encode("init:${local.password}")
+  quay_auth = {"${local.hostname}:8443":{"auth":"${local.encoded_password}","email":"init@${local.hostname}"}}
   hostname = module.local_hostname.data
   bindir = "${var.install_dir}/bin"
   logdir = "${var.install_dir}/logs"
@@ -9,6 +13,12 @@ locals  {
 resource "random_string" "generated_password" {
   length            = "32"
   special           = "false"
+}
+
+resource "local_file" "pull_secret" {
+    content  = jsonencode(local.new_pull_secret)
+    filename = "${var.install_dir}/pull-secret"
+    file_permission = 644
 }
 
 module "local_hostname" {
@@ -62,7 +72,7 @@ test -d ${local.bindir} || mkdir -p ${local.bindir}
 
 curl -s ${var.binaries_client} | tar -xz -C ${local.bindir}
 
-${local.bindir}/oc adm release mirror -a ${var.pull_secret} --to-dir=${var.install_dir}/mirror quay.io/${var.product_repo}/ocp-release:${var.ocp_release}-${var.architecture} >${local.logdir}/ocp_mirror.log 2>&1
+${local.bindir}/oc adm release mirror -a ${local_file.pull_secret.filename} --to-dir=${var.install_dir}/mirror quay.io/${var.product_repo}/ocp-release:${var.ocp_release}-${var.architecture} >${local.logdir}/ocp_mirror.log 2>&1
 
 EOF
   }
@@ -96,9 +106,9 @@ set -ex
 test -d ${local.bindir} || mkdir -p ${local.bindir}
 test -f ${local.bindir}/oc || curl -s ${var.binaries_client} | tar -xz -C ${local.bindir}
 
-${local.bindir}/oc image mirror -a ${var.pull_secret} --insecure --from-dir=${var.install_dir}/mirror "file://openshift/release:${var.ocp_release}*" ${local.hostname}:8443/${var.repository} >${local.logdir}/ocp_mirror_push.log 2>&1
+${local.bindir}/oc image mirror -a ${local_file.pull_secret.filename} --insecure --from-dir=${var.install_dir}/mirror "file://openshift/release:${var.ocp_release}*" ${local.hostname}:8443/${var.repository} >${local.logdir}/ocp_mirror_push.log 2>&1
 
-${local.bindir}/oc adm release mirror -a ${var.pull_secret} --insecure-skip-tls-verify=true --from=quay.io/${var.product_repo}/ocp-release:${var.ocp_release}-${var.architecture} --to=${local.hostname}:8443/${var.repository} --to-release-image=${local.hostname}:8443/${var.repository}:${var.ocp_release}-${var.architecture} --dry-run >${local.logdir}/ocp_adm_release_mirror.log 2>/dev/null
+${local.bindir}/oc adm release mirror -a ${local_file.pull_secret.filename} --insecure-skip-tls-verify=true --from=quay.io/${var.product_repo}/ocp-release:${var.ocp_release}-${var.architecture} --to=${local.hostname}:8443/${var.repository} --to-release-image=${local.hostname}:8443/${var.repository}:${var.ocp_release}-${var.architecture} --dry-run >${local.logdir}/ocp_adm_release_mirror.log 2>/dev/null
 
 EOF
   }
@@ -113,9 +123,9 @@ resource "null_resource" "extract_installers" {
     command = <<EOF
 set -ex
 
-${local.bindir}/oc adm release extract -a ${var.pull_secret} --insecure --command=openshift-install --to "${local.bindir}" "${local.hostname}:8443/${var.repository}:${var.ocp_release}-${var.architecture}"
+${local.bindir}/oc adm release extract -a ${local_file.pull_secret.filename} --insecure --command=openshift-install --to "${local.bindir}" "${local.hostname}:8443/${var.repository}:${var.ocp_release}-${var.architecture}"
 
-${local.bindir}/oc adm release extract -a ${var.pull_secret} --insecure --command=openshift-baremetal-install --to "${local.bindir}" "${local.hostname}:8443/${var.repository}:${var.ocp_release}-${var.architecture}"
+${local.bindir}/oc adm release extract -a ${local_file.pull_secret.filename} --insecure --command=openshift-baremetal-install --to "${local.bindir}" "${local.hostname}:8443/${var.repository}:${var.ocp_release}-${var.architecture}"
 
 EOF
   }

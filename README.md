@@ -1,4 +1,4 @@
-# terraform-module-ocp-quay
+# ocp-quay-mirror
 Configures a quay container repository for the purpose of installing OpenShift in restricted networks using [mirror-registry](https://github.com/quay/mirror-registry).
 
 ### Calling nfs-client module

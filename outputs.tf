@@ -46,3 +46,7 @@ EOF
 output "additionalTrustBundle" {
   value = data.local_file.quay_cert.content
 }
+
+output "pull-secret" {
+  value = local.new_pull_secret
+}

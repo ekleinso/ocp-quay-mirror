@@ -49,3 +49,7 @@ variable "architecture" {
   default = "x86_64"
 }
 
+variable "mirror_repo" {
+  type  = bool
+  default = true
+}
