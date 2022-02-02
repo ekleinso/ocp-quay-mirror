@@ -37,7 +37,17 @@ module "quay" {
 #### operating the terraform
 This can function as a module for and end-to-end Terraform based OpenShift restricted network deployment or it can be run directly to deploy a Quay repository to mirror container images for a restricted network installation.
 
-Sizing for **install_dir** will depend on how much you are planning to store in the repository. The OpenShift release for most 4.x versions is 7-10GB if you are planning to mirror the Operator Hub a much large amount of space is required for example the **redhat-operators** catalog is ~100GB and Cloud Pak for Integration images are ~150GB. Please note that the **install_dir** is also used as a scratch space for the installation so it would be best to start with 100GB.
+Sizing for **install_dir** will depend on how much you are planning to store in the repository. The OpenShift release for most 4.x versions is 7-10GB if you are planning to mirror the Operator Hub a much large amount of space is required see the table below.
+
+| Operator Catalog          | Approximate size | 
+| ------------------------- | ---------------- |
+| redhat-operator           |        593G      |
+| community-operator        |        130G      |
+| certified-operator        |        310G      |
+| redhat-marketplace        |         30G      |
+| Cloud Pak for Integration |        100G      |
+
+Please note that the **install_dir** is also used as a scratch space for the installation so it would be best to start with 100GB.
 
 The default settings will download files from the internet to support installing Quay and populating the repository. Here is a sample tfvars file for downloading.
 ```yaml
