@@ -62,7 +62,7 @@ EOF
 
 resource "null_resource" "mirror_ocp" {
 
-  count = var.binaries_mirror == "" ? 1 : 0
+  count = var.mirror_repo && var.binaries_mirror == "" ? 1 : 0
 
   provisioner "local-exec" {
     command = <<EOF
@@ -80,7 +80,7 @@ EOF
 
 resource "null_resource" "unpack_ocp" {
 
-  count = var.binaries_mirror == "" ? 0 : 1
+  count = var.mirror_repo && var.binaries_mirror != "" ? 1 : 0
 
   provisioner "local-exec" {
     command = <<EOF
@@ -95,6 +95,8 @@ EOF
 }
 
 resource "null_resource" "push_ocp" {
+
+  count = var.mirror_repo ? 1 : 0
 
   depends_on = [null_resource.quay_install, null_resource.mirror_ocp, null_resource.unpack_ocp]
 
@@ -115,6 +117,8 @@ EOF
 }
 
 resource "null_resource" "extract_installers" {
+
+  count = var.mirror_repo ? 1 : 0
 
   depends_on = [null_resource.push_ocp]
 

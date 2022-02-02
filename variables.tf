@@ -10,7 +10,7 @@ variable "binaries_mirror" {
 
 variable "installer" {
   type = string
-  default = "https://github.com/quay/mirror-registry/releases/download/1.0.0-RC6/mirror-registry-offline.tar.gz" 
+  default = "https://github.com/quay/mirror-registry/releases/download/1.0.0-RC6/mirror-registry-online.tar.gz" 
 }
 
 variable "install_dir" {
