@@ -47,6 +47,8 @@ Sizing for **install_dir** will depend on how much you are planning to store in 
 | redhat-marketplace        |         30G      |
 | Cloud Pak for Integration |        100G      |
 
+It is possible to reduce the size of the catalogs by only choosing the operators that are required for the work being performed. See [Populating OperatorHub](https://docs.openshift.com/container-platform/4.9/post_installation_configuration/preparing-for-users.html#post-install-mirrored-catalogs) for details.
+
 Please note that the **install_dir** is also used as a scratch space for the installation so it would be best to start with 100GB.
 
 The default settings will download files from the internet to support installing Quay and populating the repository. Here is a sample tfvars file for downloading.
