@@ -165,3 +165,30 @@ When you login to the UI you can see the mirror repository that is created.
 ![Repository](./images/repositories.png)
 As well as the repository tags.
 ![Repository Tags](./images/tags.png)
+
+####Mirror other OCP releases
+
+Here are some sample tfvars for mirroring other OpenShift releases.
+
+**4.8**
+```yaml
+binaries_client="https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable-4.8/openshift-client-linux.tar.gz"
+installer = "https://github.com/quay/mirror-registry/releases/download/1.0.0-RC6/mirror-registry-online.tar.gz"
+install_dir = "/opt/podman/registry"
+ocp_release = "4.8.27"
+repository = "ocp4/ocp-v4.8-release"
+product_repo = "openshift-release-dev"
+pull_secret = "/root/pull-secret"
+```
+
+**4.7**
+```yaml
+binaries_client="https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable-4.7/openshift-client-linux.tar.gz"
+installer = "https://github.com/quay/mirror-registry/releases/download/1.0.0-RC6/mirror-registry-online.tar.gz"
+install_dir = "/opt/podman/registry"
+ocp_release = "4.7.41"
+repository = "ocp4/ocp-v4.7-release"
+product_repo = "openshift-release-dev"
+pull_secret = "/root/pull-secret"
+```
+
