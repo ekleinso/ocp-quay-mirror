@@ -1,10 +1,10 @@
 # ocp-quay-mirror
-Configures a quay container repository for the purpose of installing OpenShift in restricted networks using [mirror-registry](https://github.com/quay/mirror-registry).
+Configures a Quay container repository for the purpose of installing OpenShift in restricted networks using [mirror-registry](https://github.com/quay/mirror-registry).
 
 ### Calling ocp-quay-mirror module
 ```terraform
 module "quay" {
-  source = "github.com/ekleinso/terraform-modules-ocp.git//quay?ref=1.1"
+  source = "github.com/ekleinso/ocp-quay-mirror.git?ref=1.0"
 
   depends_on = []
 
@@ -66,7 +66,7 @@ It is also possible to provide the installation files locally. This scenario may
 ```yaml
 binaries_mirror="file:///mnt/usbdisk/ocp-mirror.tar.gz"
 binaries_client="file:///mnt/usbdisk/openshift-client-linux.tar.gz"
-installer = "file:///mnt/usbdisk/mirror-registry-online.tar.gz"
+installer = "file:///mnt/usbdisk/mirror-registry-offline.tar.gz"
 install_dir = "/opt/podman/registry"
 ocp_release = "4.9.15"
 repository = "ocp4/ocp-v4.9-release"
@@ -74,10 +74,13 @@ product_repo = "openshift-release-dev"
 pull_secret = "/mnt/usbdisk/pull-secret"
 ```
 In this configuration we added the **binaries_mirror** variable that references an archive of the OpenShift mirror. To create this archive you can run these commands from a system with internet access and copy to your removable media.
+
 ```shell
 $ oc adm release mirror -a /mnt/usbdisk/pull-secret --to-dir=./mirror quay.io/openshift-release-dev/ocp-release:4.9.15-x86_64
 $ tar czf ocp-mirror.tar.gz mirror
 ```
+
+Also note that there are 2 versions of the mirror-registry bundle available an online and an offline version. The offline version includes the container images for Quay and should be used in scenarios where removable media is required.
 
 The Terraform will output the following information.
 
@@ -321,7 +324,7 @@ $ oc adm catalog mirror quay-mirror.example.com:8443/olm-catalog/redhat-marketpl
    --insecure --index-filter-by-os='.*'
 ```
 
-6. Upload local images to a registry
+6. **(Optional)** Upload local images to a registry from removable media
 ```shell
 $ oc adm catalog mirror -a /opt/podman/quay/pull-secret --insecure file://ocp4/olm-catalog/redhat-operator-index:v4.9 quay-mirror.example.com:8443/olm-mirror
 $ oc adm catalog mirror -a /opt/podman/quay/pull-secret --insecure file://ocp4/olm-catalog/redhat-marketplace-index:v4.9 quay-mirror.example.com:8443/olm-mirror
