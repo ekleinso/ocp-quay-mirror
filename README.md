@@ -47,7 +47,7 @@ Sizing for **install_dir** will depend on how much you are planning to store in 
 | redhat-marketplace        |         30G      |
 | Cloud Pak for Integration |        100G      |
 
-It is possible to reduce the size of the catalogs by only choosing the operators that are required for the work being performed. See [Populating OperatorHub](https://docs.openshift.com/container-platform/4.9/post_installation_configuration/preparing-for-users.html#post-install-mirrored-catalogs) for details.
+It is possible to reduce the size of the catalogs by only choosing the operators that are required for the work being performed. See [Mirroring Operator catalogs](https://docs.openshift.com/container-platform/4.9/installing/installing-mirroring-installation-images.html#olm-mirror-catalog_installing-mirroring-installation-images) for details.
 
 Please note that the **install_dir** is also used as a scratch space for the installation so it would be best to start with 100GB.
 
@@ -108,10 +108,10 @@ metadata:
 spec:
   repositoryDigestMirrors:
   - mirrors:
-    - quay.example.com:8443/ocp4/ocp-v4.9-release
+    - quay-mirror.example.com:8443/ocp4/ocp-v4.9-release
     source: quay.io/openshift-release-dev/ocp-release
   - mirrors:
-    - quay.example.com:8443/ocp4/ocp-v4.9-release
+    - quay-mirror.example.com:8443/ocp4/ocp-v4.9-release
     source: quay.io/openshift-release-dev/ocp-v4.0-art-dev
 EOT
 ```
@@ -124,10 +124,10 @@ To use the new mirrored repository to install, add the following section to the 
 imageContentSources = <<EOT
 imageContentSources:
 - mirrors:
-  - quay.example.com:8443/ocp4/ocp-v4.9-release
+  - quay-mirror.example.com:8443/ocp4/ocp-v4.9-release
   source: quay.io/openshift-release-dev/ocp-release
 - mirrors:
-  - quay.example.com:8443/ocp4/ocp-v4.9-release
+  - quay-mirror.example.com:8443/ocp4/ocp-v4.9-release
   source: quay.io/openshift-release-dev/ocp-v4.0-art-dev
 EOT
 ```
@@ -146,9 +146,9 @@ The OpenShift pull secret is updated with the Quay repository information and al
 ```
 pull-secret = {
   "auths" = {
-    "quay.example.com:8443" = {
+    "quay-mirror.example.com:8443" = {
       "auth" = "aW5pdDoxMjM0NTY3ODkwYWJjZGVm"
-      "email" = "init@quay.example.com"
+      "email" = "init@quay-mirror.example.com"
     }
     "quay.io" = {
       "auth" = "1234567890abcdef="
@@ -170,7 +170,7 @@ pull-secret = {
 
 ```
 quay-credentials = "(init, 1234567890abcdef)"
-quay-url = "https://quay.example.com:8443"
+quay-url = "https://quay-mirror.example.com:8443"
 ```
 
 When you login to the UI you can see the mirror repository that is created.
@@ -204,3 +204,167 @@ product_repo = "openshift-release-dev"
 pull_secret = "/root/pull-secret"
 ```
 
+## Mirror Operator Hub
+
+### Prune catalogs 
+As stated above mirroring the Operator Hub can consume alot of storage not to mention downloading gigabytes of data. There is a way to prune the catalogs so you only mirror the operators that you are interested in using.  Here is a summary of steps that can be taken to selectively mirror the Operator Hub which was taken from the [Red Hat Documentation](https://docs.openshift.com/container-platform/4.9/installing/installing-mirroring-installation-images.html#olm-mirror-catalog_installing-mirroring-installation-images).
+
+### Tools needed
+- podman
+- [OpenShift CLI](https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable-4.9/openshift-client-linux.tar.gz)
+- [OPM cli](https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable-4.9/opm-linux.tar.gz)
+- [grpcurl](https://github.com/fullstorydev/grpcurl)
+
+I am going to skip the steps to list the contents of the catalog indexes. You can review the [Red Hat Documentation](https://docs.openshift.com/container-platform/4.9/installing/installing-mirroring-installation-images.html#olm-mirror-catalog_installing-mirroring-installation-images) link for more details on that. Instead I will focus on mirroring the operators I find more commonly used. These are detailed in the table below. 
+
+- redhat-operator-index (New size: ~69G)
+  - cluster-logging
+  - elasticsearch-operator
+  - ocs-operator
+  - jaeger-product
+  - kiali-ossm
+  - local-storage-operator
+  - cincinnati-operator
+  - openshift-gitops-operator
+  - openshift-jenkins-operator
+  - openshift-pipelines-operator-rh
+  - quay-bridge-operator
+  - quay-operator
+  - web-terminal
+- community-operator-index (New size: ~10G)
+  - argocd-operator
+  - argocd-operator-helm
+  - cert-manager
+  - etcd
+  - grafana-operator
+  - jaeger
+  - kiali
+  - must-gather-operator
+  - nexus-operator-m88i
+  - openebs
+- certified-operator-index (New size: ~9G)
+  - cert-manager-operator
+  - gitlab-runner-operator
+  - mongodb-enterprise
+  - portworx-certified
+  - minio-operator
+- redhat-marketplace-index (Size: ~26G)
+  - Usuall just mirror the whole repo
+  
+1. Login to registry.redhat.io credentials are found in the pull-secret. Just take the auth field and echo into `base64 -d` there are 2 fields `username:password`
+
+```shell
+$ podman login registry.redhat.io
+```
+
+2. Prune indexes using selected packages
+```shell
+$ opm index prune -f registry.redhat.io/redhat/redhat-operator-index:v4.9 \
+  -p cluster-logging,elasticsearch-operator,ocs-operator,jaeger-product,kiali-ossm,local-storage-operator,cincinnati-operator,openshift-gitops-operator,openshift-jenkins-operator,openshift-pipelines-operator-rh,quay-bridge-operator,quay-operator,web-terminal \
+  -t quay-mirror.example.com:8443/olm-catalog/redhat-operator-index:v4.9
+$ opm index prune -f registry.redhat.io/redhat/community-operator-index:v4.9 \
+  -p argocd-operator,argocd-operator-helm,cert-manager,etcd,grafana-operator,jaeger,kiali,must-gather-operator,nexus-operator-m88i,openebs \
+  -t quay-mirror.example.com:8443/olm-catalog/community-operator-index:v4.9
+$ opm index prune -f registry.redhat.io/redhat/certified-operator-index:v4.9 \
+  -p cert-manager-operator, gitlab-runner-operator, mongodb-enterprise, portworx-certified, minio-operator \
+  -t quay-mirror.example.com:8443/olm-catalog/certified-operator-index:v4.9
+# Or just copy the catalog as is
+$ podman pull registry.redhat.io/redhat/redhat-marketplace-index:v4.9
+$ podman tag registry.redhat.io/redhat/redhat-marketplace-index:v4.9 quay-mirror.example.com:8443/olm-catalog/redhat-marketplace-index:v4.9
+```
+
+3. Push to indexes to local mirror repo
+```shell
+$ podman push --tls-verify=false --authfile /opt/podman/quay/pull-secret quay-mirror.example.com:8443/olm-catalog/redhat-operator-index:v4.9
+$ podman push --tls-verify=false --authfile /opt/podman/quay/pull-secret quay-mirror.example.com:8443/olm-catalog/certified-operator-index:v4.9
+$ podman push --tls-verify=false --authfile /opt/podman/quay/pull-secret quay-mirror.example.com:8443/olm-catalog/community-operator-index:v4.9
+$ podman push --tls-verify=false --authfile /opt/podman/quay/pull-secret quay-mirror.example.com:8443/olm-catalog/redhat-marketplace-index:v4.9
+```
+
+4. Mirror operators to local repository
+```shell
+$ oc adm catalog mirror quay-mirror.example.com:8443/olm-catalog/redhat-operator-index:v4.9 \
+  quay-mirror.example.com:8443/olm-mirror \
+  -a /opt/podman/quay/pull-secret \
+  --insecure --index-filter-by-os='.*'
+$ oc adm catalog mirror quay-mirror.example.com:8443/olm-catalog/certified-operator-index:v4.9 \
+  quay-mirror.example.com:8443/olm-mirror \
+  -a /opt/podman/quay/pull-secret \
+  --insecure --index-filter-by-os='.*'
+$ oc adm catalog mirror quay-mirror.example.com:8443/olm-catalog/community-operator-index:v4.9 \
+  quay-mirror.example.com:8443/olm-mirror \
+  -a /opt/podman/quay/pull-secret \
+  --insecure --index-filter-by-os='.*'
+$ oc adm catalog mirror quay-mirror.example.com:8443/olm-catalog/redhat-marketplace-index:v4.9 \
+  quay-mirror.example.com:8443/olm-mirror \
+  -a /opt/podman/quay/pull-secret \
+  --insecure --index-filter-by-os='.*'
+```
+
+5. **(Optional)** Mirror operators to local disk to transport via removable media
+```shell
+$ oc adm catalog mirror quay-mirror.example.com:8443/olm-catalog/redhat-operator-index:v4.9 \
+  file:///ocp4 \
+  -a /opt/podman/quay/pull-secret \
+  --insecure --index-filter-by-os='.*'
+$ oc adm catalog mirror quay-mirror.example.com:8443/olm-catalog/certified-operator-index:v4.9 \
+  file:///ocp4 \
+  -a /opt/podman/quay/pull-secret \
+  --insecure --index-filter-by-os='.*'
+$ oc adm catalog mirror quay-mirror.example.com:8443/olm-catalog/community-operator-index:v4.9 \
+  file:///ocp4 \
+  -a /opt/podman/quay/pull-secret \
+  --insecure --index-filter-by-os='.*'
+$ oc adm catalog mirror quay-mirror.example.com:8443/olm-catalog/redhat-marketplace-index:v4.9 \
+   file:///ocp4 \
+   -a /repository/utils/pull-secret \
+   --insecure --index-filter-by-os='.*'
+```
+
+6. Upload local images to a registry
+```shell
+$ oc adm catalog mirror -a /opt/podman/quay/pull-secret --insecure file://ocp4/olm-catalog/redhat-operator-index:v4.9 quay-mirror.example.com:8443/olm-mirror
+$ oc adm catalog mirror -a /opt/podman/quay/pull-secret --insecure file://ocp4/olm-catalog/redhat-marketplace-index:v4.9 quay-mirror.example.com:8443/olm-mirror
+$ oc adm catalog mirror -a /opt/podman/quay/pull-secret --insecure file://ocp4/olm-catalog/community-operator-index:v4.9 quay-mirror.example.com:8443/olm-mirror
+$ oc adm catalog mirror -a /opt/podman/quay/pull-secret --insecure file://ocp4/olm-catalog/certified-operator-index:v4.9 quay-mirror.example.com:8443/olm-mirror
+```
+
+7. After the images are mirrored examine the **manifests** folders. They will be named:
+```
+manifests-redhat-operator-index-*
+manifests-redhat-marketplace-index-*
+manifests-certified-operator-index-*
+manifests-community-operator-index-*
+```
+There should be a **catalogSource.yaml** and **imageContentSourcePolicy.yaml**. They can be imported into the cluster using `oc apply -f`.
+**Example catalogSource.yaml**
+```yaml
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: redhat-operator-index
+  namespace: openshift-marketplace
+spec:
+  image: quay-mirror.example.com:8443/olm-mirror/olm-catalog-redhat-operator-index:v4.9
+  sourceType: grpc
+```
+**Example imageContentSourcePolicy.yaml**
+```yaml
+apiVersion: operator.openshift.io/v1alpha1
+kind: ImageContentSourcePolicy
+metadata:
+  name: redhat-operator-index
+spec:
+  repositoryDigestMirrors:
+  - mirrors:
+    - quay-mirror.example.com:8443/olm-mirror/openshift-logging-logging-curator5-rhel8
+    source: registry.redhat.io/openshift-logging/logging-curator5-rhel8
+  - mirrors:
+    - quay-mirror.example.com:8443/olm-mirror/ubi8-ubi-minimal
+    source: registry.redhat.io/ubi8/ubi-minimal
+  - mirrors:
+    - quay-mirror.example.com:8443/olm-mirror/openshift-pipelines-pipelines-cli-tkn-rhel8
+    source: registry.redhat.io/openshift-pipelines/pipelines-cli-tkn-rhel8
+
+...Continues for many lines
+```
